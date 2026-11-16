@@ -611,8 +611,10 @@ const flushMouseDelta = () => {
 
 const queueMouseDelta = (dx, dy) => {
   if (!pendingDelta) pendingDelta = { dx: 0, dy: 0 };
-  pendingDelta.dx += dx;
-  pendingDelta.dy += dy;
+  // Pointer speed scales the deltas actually sent to the PC; this keeps the
+  // movement in sync with lastPointerNorm, which already applies it.
+  pendingDelta.dx += dx * mouseDeltaSensitivity;
+  pendingDelta.dy += dy * mouseDeltaSensitivity;
   if (!moveFrame) moveFrame = requestAnimationFrame(flushMouseDelta);
 };
 

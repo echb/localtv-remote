@@ -171,6 +171,31 @@ test('movement beyond the threshold wraps deltas in left down and up', () => {
   assert.deepEqual(app.binaryTags(), [0x03, 0x01, 0x04]);
 });
 
+test('pointer speed scales the mouse deltas sent to the PC', () => {
+  const app = createControllerHarness();
+  const deltaFrames = () => app.binaryFrames().filter((frame) => frame.getUint8(0) === 0x01);
+
+  // Default speed: raw delta of (30-10)/100 = 0.2 crosses the trackpad.
+  app.trackpad.emit('pointerdown', pointer({ button: 0, clientX: 10, clientY: 10 }));
+  app.trackpad.emit('pointermove', pointer({ button: 0, clientX: 30, clientY: 10 }));
+  app.flushAnimationFrames();
+  assert.equal(deltaFrames().length, 1);
+  assert.ok(Math.abs(deltaFrames().at(-1).getFloat32(1, true) - 0.2) < 1e-6);
+
+  // At 2.0x the same physical movement must send twice the delta.
+  app.document.getElementById('pointer-speed').value = '2.0';
+  app.document.getElementById('pointer-speed').emit('input');
+  app.trackpad.emit('pointermove', pointer({ button: 0, clientX: 50, clientY: 10 }));
+  app.flushAnimationFrames();
+  const scaled = deltaFrames().at(-1);
+  assert.equal(deltaFrames().length, 2);
+  assert.ok(
+    Math.abs(scaled.getFloat32(1, true) - 0.4) < 1e-6,
+    `expected dx 0.4 at 2.0x, got ${scaled.getFloat32(1, true)}`,
+  );
+  assert.ok(Math.abs(scaled.getFloat32(5, true)) < 1e-6);
+});
+
 test('a stationary press remains a click', () => {
   const app = createControllerHarness();
   app.trackpad.emit('pointerdown', pointer({ button: 0, clientX: 10, clientY: 10 }));
