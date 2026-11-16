@@ -4,7 +4,7 @@
    Bump CACHE_VERSION to invalidate all cached assets.
    ═══════════════════════════════════════════════════════════════ */
 
-const CACHE_VERSION = 'localtv-remote-v8';
+const CACHE_VERSION = 'localtv-remote-v9';
 
 /**
  * Static assets to pre-cache on install.
@@ -28,9 +28,17 @@ const PRECACHE_ASSETS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_VERSION).then((cache) => {
-      return cache.addAll(PRECACHE_ASSETS);
-    })
+    caches.open(CACHE_VERSION).then(async (cache) => {
+      // Bypass the HTTP cache so a version bump always pre-caches fresh
+      // assets — a stale copy must never be baked into a new cache.
+      await Promise.all(
+        PRECACHE_ASSETS.map(async (url) => {
+          const response = await fetch(new Request(url, { cache: 'reload' }));
+          if (!response.ok) throw new Error(`precache failed: ${url}`);
+          await cache.put(url, response);
+        }),
+      );
+    }),
   );
   // Activate immediately without waiting for existing clients to close
   self.skipWaiting();

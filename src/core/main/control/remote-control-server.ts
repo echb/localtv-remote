@@ -124,9 +124,19 @@ export class RemoteControlServer {
       maxAge: '1h',
       etag: true,
       lastModified: true,
+      setHeaders: (response, filePath) => {
+        // The service worker is the cache layer. HTML/CSS/JS must be
+        // revalidated on every request so a client can never render new
+        // markup with stale styles (etag makes the revalidation a 304).
+        if (/\.(html?|css|js)$/i.test(filePath)) {
+          response.setHeader('Cache-Control', 'no-cache');
+        }
+      },
     }));
     this.app.get('/', (_request, response) => {
-      response.sendFile(path.join(publicDirectory, 'index.html'));
+      response.sendFile(path.join(publicDirectory, 'index.html'), {
+        headers: { 'Cache-Control': 'no-cache' },
+      });
     });
     if (hugeIconsDirectory) {
       this.app.use('/hugeicons', express.static(hugeIconsDirectory, {
