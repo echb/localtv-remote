@@ -105,7 +105,7 @@
           <span class="section-label">Remote Settings</span>
           <label class="settings__row" for="pointer-speed">
             <span>Pointer speed</span>
-            <input class="settings__range" id="pointer-speed" type="range" min="1" max="3.2" step="0.1" value="1.0" />
+            <input class="settings__range" id="pointer-speed" type="range" min="0.3" max="3.2" step="0.1" value="1.0" />
             <strong id="pointer-speed-value">1.0x</strong>
           </label>
           <label class="settings__row" for="cursor-visibility">
@@ -237,26 +237,33 @@
             </div>
 
             <span class="section-label" style="margin-top:20px">D-Pad</span>
-            <div class="dpad">
-              <button class="dpad__btn dpad__btn--up" data-key="ArrowUp" type="button" aria-label="Up">
+            <div class="dpad" id="dpad" role="group" aria-label="Directional pad">
+              <button class="dpad__zone dpad__zone--up" id="dpad-up" type="button" aria-label="Up">
                 <span class="icon-slot" data-hgi="up"></span>
               </button>
-              <button class="dpad__btn dpad__btn--left" data-key="ArrowLeft" type="button" aria-label="Left">
-                <span class="icon-slot" data-hgi="left"></span>
-              </button>
-              <button class="dpad__btn dpad__btn--ok" id="dpad-ok" type="button" aria-label="OK / Enter">OK</button>
-              <button class="dpad__btn dpad__btn--right" data-key="ArrowRight" type="button" aria-label="Right">
+              <button class="dpad__zone dpad__zone--right" id="dpad-right" type="button" aria-label="Right">
                 <span class="icon-slot" data-hgi="right"></span>
               </button>
-              <button class="dpad__btn dpad__btn--down" data-key="ArrowDown" type="button" aria-label="Down">
+              <button class="dpad__zone dpad__zone--down" id="dpad-down" type="button" aria-label="Down">
                 <span class="icon-slot" data-hgi="down"></span>
               </button>
+              <button class="dpad__zone dpad__zone--left" id="dpad-left" type="button" aria-label="Left">
+                <span class="icon-slot" data-hgi="left"></span>
+              </button>
+              <button class="dpad__ok" id="dpad-ok" type="button" aria-label="OK / Enter">OK</button>
             </div>
-            <button class="mode-switch-btn pro-locked" id="switch-tv-mode" type="button" disabled>
-              <span>Switch to TV Mode</span>
-              <span class="pro-badge">PRO</span>
-            </button>
-            <p class="pro-note">Full-screen streaming launcher — available in LocalTV Pro</p>
+            <p class="dpad__hint">Hold to repeat · slide around the ring</p>
+            <div class="vol-row vol-row--dpad">
+              <button class="vol-btn" id="dpad-vol-down" type="button" aria-label="Volume down">
+                <span class="icon-slot" data-hgi="volumeDown"></span>
+              </button>
+              <div class="vol-display">
+                <span class="vol-label" id="dpad-volume-value">--</span>
+              </div>
+              <button class="vol-btn" id="dpad-vol-up" type="button" aria-label="Volume up">
+                <span class="icon-slot" data-hgi="volumeUp"></span>
+              </button>
+            </div>
           </section>
 
         </div>

@@ -70,7 +70,7 @@ test('service worker invalidates the controller help and gesture artwork cache',
     'utf8',
   );
 
-  assert.match(source, /CACHE_VERSION = 'localtv-remote-v6'/);
+  assert.match(source, /CACHE_VERSION = 'localtv-remote-v8'/);
   assert.match(source, /'\/help\.js'/);
   assert.match(source, /'\/gestures\/one-finger\.png'/);
   assert.match(source, /'\/gestures\/two-fingers\.png'/);

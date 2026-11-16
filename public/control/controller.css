@@ -974,6 +974,12 @@ button, input { font: inherit; color: inherit; touch-action: manipulation; }
   user-select: none;
 }
 
+/* Volume buttons on the Input screen, aligned with the D-pad ring */
+.vol-row--dpad {
+  max-width: 312px;
+  margin: 12px auto 0;
+}
+
 
 /* ────────────────────────────────────────
    Shared: Labels, Grid, Tiles
@@ -1091,56 +1097,122 @@ button, input { font: inherit; color: inherit; touch-action: manipulation; }
 
 
 /* ────────────────────────────────────────
-   D-Pad
+   D-Pad — circular ring (Google TV / Apple TV style)
+   Four arc zones clipped into a ring + center OK button.
    ──────────────────────────────────────── */
 
 .dpad {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  grid-template-rows: 1fr 1fr 1fr;
-  grid-template-areas:
-    ".    up    ."
-    "left ok    right"
-    ".    down  .";
-  gap: 8px;
-  max-width: 312px;
-  margin: 0 auto;
-}
-
-.dpad__btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
+  width: min(100%, 312px);
   aspect-ratio: 1;
-  border-radius: var(--radius-surface);
-  border: 0;
-  background: var(--raised);
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: background 80ms ease, transform 60ms ease, color 80ms ease;
+  margin: 0 auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
 }
 
-.dpad__btn:active { background: var(--glass-active); color: var(--text); transform: scale(0.92); }
+.dpad__zone {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  padding: 0;
+  background: var(--raised);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 90ms ease, color 90ms ease, transform 90ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
 
-.dpad__btn .icon,
-.dpad__btn .icon-slot { width: 32px; height: 32px; }
+.dpad__zone .icon,
+.dpad__zone .icon-slot { width: 30px; height: 30px; }
 
-.dpad__btn--up    { grid-area: up; }
-.dpad__btn--down  { grid-area: down; }
-.dpad__btn--left  { grid-area: left; }
-.dpad__btn--right { grid-area: right; }
-.dpad__btn--ok    {
-  grid-area: ok;
-  background: #303640;
+/* Arc geometry: outer radius 48.5%, inner hole 22%, 1.2° gaps.
+   Content is nudged outward so the icon sits mid-band. */
+.dpad__zone--up {
+  clip-path: polygon(16.07% 15.35%, 20.43% 11.56%, 25.21% 8.31%, 30.34% 5.66%, 35.76% 3.64%, 41.37% 2.27%, 47.11% 1.59%, 52.89% 1.59%, 58.63% 2.27%, 64.24% 3.64%, 69.66% 5.66%, 74.79% 8.31%, 79.57% 11.56%, 83.93% 15.35%, 65.39% 34.28%, 63.41% 32.56%, 61.24% 31.09%, 58.92% 29.89%, 56.46% 28.97%, 53.91% 28.35%, 51.31% 28.04%, 48.69% 28.04%, 46.09% 28.35%, 43.54% 28.97%, 41.08% 29.89%, 38.76% 31.09%, 36.59% 32.56%, 34.61% 34.28%);
+  align-items: flex-start;
+  padding-top: 8%;
+}
+
+.dpad__zone--right {
+  clip-path: polygon(84.65% 16.07%, 88.44% 20.43%, 91.69% 25.21%, 94.34% 30.34%, 96.36% 35.76%, 97.73% 41.37%, 98.41% 47.11%, 98.41% 52.89%, 97.73% 58.63%, 96.36% 64.24%, 94.34% 69.66%, 91.69% 74.79%, 88.44% 79.57%, 84.65% 83.93%, 65.72% 65.39%, 67.44% 63.41%, 68.91% 61.24%, 70.11% 58.92%, 71.03% 56.46%, 71.65% 53.91%, 71.96% 51.31%, 71.96% 48.69%, 71.65% 46.09%, 71.03% 43.54%, 70.11% 41.08%, 68.91% 38.76%, 67.44% 36.59%, 65.72% 34.61%);
+  justify-content: flex-end;
+  padding-right: 8%;
+}
+
+.dpad__zone--down {
+  clip-path: polygon(83.93% 84.65%, 79.57% 88.44%, 74.79% 91.69%, 69.66% 94.34%, 64.24% 96.36%, 58.63% 97.73%, 52.89% 98.41%, 47.11% 98.41%, 41.37% 97.73%, 35.76% 96.36%, 30.34% 94.34%, 25.21% 91.69%, 20.43% 88.44%, 16.07% 84.65%, 34.61% 65.72%, 36.59% 67.44%, 38.76% 68.91%, 41.08% 70.11%, 43.54% 71.03%, 46.09% 71.65%, 48.69% 71.96%, 51.31% 71.96%, 53.91% 71.65%, 56.46% 71.03%, 58.92% 70.11%, 61.24% 68.91%, 63.41% 67.44%, 65.39% 65.72%);
+  align-items: flex-end;
+  padding-bottom: 8%;
+}
+
+.dpad__zone--left {
+  clip-path: polygon(15.35% 83.93%, 11.56% 79.57%, 8.31% 74.79%, 5.66% 69.66%, 3.64% 64.24%, 2.27% 58.63%, 1.59% 52.89%, 1.59% 47.11%, 2.27% 41.37%, 3.64% 35.76%, 5.66% 30.34%, 8.31% 25.21%, 11.56% 20.43%, 15.35% 16.07%, 34.28% 34.61%, 32.56% 36.59%, 31.09% 38.76%, 29.89% 41.08%, 28.97% 43.54%, 28.35% 46.09%, 28.04% 48.69%, 28.04% 51.31%, 28.35% 53.91%, 28.97% 56.46%, 29.89% 58.92%, 31.09% 61.24%, 32.56% 63.41%, 34.28% 65.39%);
+  justify-content: flex-start;
+  padding-left: 8%;
+}
+
+.dpad__zone:active,
+.dpad__zone.is-active {
+  background: var(--glass-active);
+  color: var(--text);
+  transform: scale(0.985);
+}
+
+.dpad__zone:focus-visible {
+  outline: none;
+  background: var(--glass-active);
+  color: var(--text);
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.dpad__ok {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 44%;
+  height: 44%;
+  border: 0;
+  border-radius: 50%;
+  background: var(--glass-active);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   color: var(--text);
   font-size: 0.9rem;
   font-weight: 700;
   letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 90ms ease, transform 90ms ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.dpad__btn--ok:active { background: #39414d; }
+.dpad__ok:active,
+.dpad__ok.is-active {
+  background: #39414d;
+  transform: translate(-50%, -50%) scale(0.94);
+}
+
+.dpad__ok:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.dpad__hint {
+  margin: 10px auto 0;
+  text-align: center;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--text-dim);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dpad__zone,
+  .dpad__ok { transition: none; }
+}
 
 .mode-switch-btn {
   width: 100%;

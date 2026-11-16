@@ -164,13 +164,20 @@ const btnHome = document.getElementById('btn-home');
 const btnPlayPause = document.getElementById('btn-playpause');
 const volDown = document.getElementById('vol-down');
 const volUp = document.getElementById('vol-up');
+const dpadVolDown = document.getElementById('dpad-vol-down');
+const dpadVolUp = document.getElementById('dpad-vol-up');
+const dpadVolumeValue = document.getElementById('dpad-volume-value');
 const volumeTrack = document.getElementById('volume-track');
 const volumeFill = document.getElementById('volume-fill');
 const volumeValue = document.getElementById('volume-value');
 const kbInput = document.getElementById('kb-input');
 const kbClear = document.getElementById('kb-clear');
 const dpadOk = document.getElementById('dpad-ok');
-const switchTvModeBtn = document.getElementById('switch-tv-mode');
+const dpadEl = document.getElementById('dpad');
+const dpadUp = document.getElementById('dpad-up');
+const dpadRight = document.getElementById('dpad-right');
+const dpadDown = document.getElementById('dpad-down');
+const dpadLeft = document.getElementById('dpad-left');
 const urlInput = document.getElementById('url-input');
 const navBtn = document.getElementById('nav-btn');
 const panels = document.getElementById('panels');
@@ -670,6 +677,7 @@ let pendingVolumeTarget = null;
 const updateVolumeUI = () => {
   if (!hasVolumeState) {
     volumeValue.textContent = '--';
+    if (dpadVolumeValue) dpadVolumeValue.textContent = '--';
     if (volumeFill) volumeFill.style.width = '0%';
     volumeTrack?.setAttribute('aria-valuenow', '0');
     volumeTrack?.setAttribute('aria-valuetext', 'Volume unavailable');
@@ -679,6 +687,7 @@ const updateVolumeUI = () => {
 
   const clamped = Math.max(0, Math.min(100, Math.round(currentVolume)));
   volumeValue.textContent = String(clamped);
+  if (dpadVolumeValue) dpadVolumeValue.textContent = String(clamped);
   if (volumeFill) volumeFill.style.width = `${clamped}%`;
   volumeTrack?.setAttribute('aria-valuenow', String(clamped));
   volumeTrack?.setAttribute('aria-valuetext', `${clamped}%`);
@@ -742,8 +751,20 @@ const stopVolumeRepeat = () => {
   flushVolumeTarget();
 };
 
-volDown?.addEventListener('pointerdown', (e) => { e.preventDefault(); startVolumeRepeat(-VOLUME_STEP); });
-volUp?.addEventListener('pointerdown', (e) => { e.preventDefault(); startVolumeRepeat(VOLUME_STEP); });
+// All volume buttons (Remote + Input panels) share the same press-and-hold path
+const volumeButtonBindings = [
+  [volDown, -VOLUME_STEP],
+  [volUp, VOLUME_STEP],
+  [dpadVolDown, -VOLUME_STEP],
+  [dpadVolUp, VOLUME_STEP],
+];
+
+volumeButtonBindings.forEach(([button, delta]) => {
+  button?.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    startVolumeRepeat(delta);
+  });
+});
 window.addEventListener('pointerup', stopVolumeRepeat);
 window.addEventListener('pointercancel', stopVolumeRepeat);
 
@@ -1127,23 +1148,146 @@ keyBtns.forEach((btn) => {
   });
 });
 
-/* ── D-Pad OK = Enter ── */
-dpadOk?.addEventListener('click', () => sendMessage({ key: 'Enter', type: 'key' }));
-switchTvModeBtn?.addEventListener('click', async () => {
+/* ── D-Pad ring: press-and-hold repeat + slide around the ring ── */
+
+const DPAD_REPEAT_DELAY_MS = 420;
+const DPAD_REPEAT_RATE_MS = 120;
+
+const dpadZones = [
+  ['ArrowUp', dpadUp],
+  ['ArrowRight', dpadRight],
+  ['ArrowDown', dpadDown],
+  ['ArrowLeft', dpadLeft],
+];
+
+let dpadActiveKey = null;
+let dpadActiveZone = null;
+let dpadDelayTimer = null;
+let dpadRateTimer = null;
+let dpadPointerId = null;
+let dpadPointerUsed = false;
+
+const dpadBuzz = (durationMs) => {
   try {
-    switchTvModeBtn.setAttribute('disabled', 'true');
-    switchTvModeBtn.textContent = 'Switching…';
-    await fetch('/api/switch-mode', { method: 'POST' });
+    if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+      navigator.vibrate(durationMs);
+    }
   } catch {
-    switchTvModeBtn.textContent = 'Switch failed';
-    setTimeout(() => {
-      if (switchTvModeBtn) {
-        switchTvModeBtn.textContent = 'Switch to TV Mode';
-        switchTvModeBtn.removeAttribute('disabled');
-      }
-    }, 1500);
+    /* haptics are optional */
+  }
+};
+
+const dpadSend = (key) => sendMessage({ key, type: 'key' });
+
+const dpadStopRepeat = () => {
+  if (dpadDelayTimer !== null) {
+    clearTimeout(dpadDelayTimer);
+    dpadDelayTimer = null;
+  }
+  if (dpadRateTimer !== null) {
+    clearInterval(dpadRateTimer);
+    dpadRateTimer = null;
+  }
+};
+
+const dpadClearActive = () => {
+  dpadStopRepeat();
+  if (dpadActiveZone) dpadActiveZone.classList.remove('is-active');
+  dpadActiveKey = null;
+  dpadActiveZone = null;
+};
+
+const dpadActivate = (key, zone) => {
+  if (dpadActiveKey === key) return;
+  dpadClearActive();
+  dpadActiveKey = key;
+  dpadActiveZone = zone;
+  zone.classList.add('is-active');
+  dpadSend(key);
+  dpadBuzz(8);
+  dpadDelayTimer = setTimeout(() => {
+    dpadDelayTimer = null;
+    dpadRateTimer = setInterval(() => dpadSend(key), DPAD_REPEAT_RATE_MS);
+  }, DPAD_REPEAT_DELAY_MS);
+};
+
+const dpadZoneAtPoint = (clientX, clientY) => {
+  if (!dpadEl) return null;
+  const rect = dpadEl.getBoundingClientRect();
+  const width = rect.width || 0;
+  if (!width) return null;
+  const height = rect.height || width;
+  const dx = clientX - (rect.left + width / 2);
+  const dy = clientY - ((rect.top || 0) + height / 2);
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  if (dist > width * 0.485 || dist < width * 0.22) return null;
+  const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
+  if (angle >= -135 && angle < -45) return dpadZones[0];
+  if (angle >= -45 && angle < 45) return dpadZones[1];
+  if (angle >= 45 && angle < 135) return dpadZones[2];
+  return dpadZones[3];
+};
+
+const dpadTrack = (event) => {
+  const hit = dpadZoneAtPoint(event.clientX, event.clientY);
+  if (!hit) {
+    dpadClearActive();
     return;
   }
+  if (hit[0] !== dpadActiveKey) dpadActivate(hit[0], hit[1]);
+};
+
+if (dpadEl) {
+  dpadEl.addEventListener('pointerdown', (event) => {
+    if (event.target === dpadOk || dpadPointerId !== null) return;
+    dpadPointerId = event.pointerId ?? 1;
+    dpadPointerUsed = true;
+    try {
+      dpadEl.setPointerCapture(dpadPointerId);
+    } catch {
+      /* capture is best-effort */
+    }
+    event.preventDefault();
+    dpadTrack(event);
+  });
+
+  dpadEl.addEventListener('pointermove', (event) => {
+    if (dpadPointerId === null || (event.pointerId ?? 1) !== dpadPointerId) return;
+    event.preventDefault();
+    dpadTrack(event);
+  });
+
+  const dpadRelease = (event) => {
+    if (dpadPointerId === null) return;
+    if (event.pointerId != null && event.pointerId !== dpadPointerId) return;
+    dpadPointerId = null;
+    dpadClearActive();
+    setTimeout(() => {
+      dpadPointerUsed = false;
+    }, 400);
+  };
+
+  dpadEl.addEventListener('pointerup', dpadRelease);
+  dpadEl.addEventListener('pointercancel', dpadRelease);
+  dpadEl.addEventListener('lostpointercapture', dpadRelease);
+}
+
+dpadZones.forEach(([key, zone]) => {
+  zone?.addEventListener('click', () => {
+    /* Pointer presses are handled by the ring logic above;
+       clicks here cover keyboard/ATK activation only. */
+    if (dpadPointerUsed) return;
+    dpadSend(key);
+    dpadBuzz(8);
+    zone.classList.add('is-active');
+    setTimeout(() => zone.classList.remove('is-active'), 150);
+  });
+});
+
+/* ── D-Pad OK = Enter ── */
+dpadOk?.addEventListener('click', () => {
+  dpadBuzz(8);
+  dpadSend('Enter');
 });
 
 /* ── Keyboard input + clear ── */

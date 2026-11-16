@@ -1,0 +1,51 @@
+name: Release
+
+# Builds the Windows x64 installer and publishes a GitHub Release with it
+# whenever a version tag (e.g. v1.2.0) is pushed. The published release also
+# triggers winget-publish.yml (which matches the Setup-*.exe asset).
+
+on:
+  push:
+    tags: ['v*']
+
+jobs:
+  release:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # bash so the tests/*.test.cjs glob is expanded (cmd.exe does not glob)
+      - name: Build and test
+        shell: bash
+        run: npm run build && node --test tests/*.test.cjs
+
+      # bundle → SEA executable → payload assembly
+      - name: Build distributable
+        run: npm run dist
+
+      # build-installer.mjs falls back to winget; choco covers runners without it
+      - name: Ensure Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path 'C:\Program Files (x86)\Inno Setup 6\ISCC.exe')) {
+            choco install innosetup -y --no-progress
+          }
+
+      - name: Compile installer
+        run: npm run installer
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/LocalTVRemote-Setup-*.exe
+          generate_release_notes: true
